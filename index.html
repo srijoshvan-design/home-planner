@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>HomeEase – Smart Home Space Planner</title>
+<style>
+:root{--bg:#f5f7f6;--card:#fff;--text:#172321;--muted:#66736f;--accent:#0f766e;--soft:#e3f2ef;--border:#dbe3e0;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#101716;--card:#18211f;--text:#e6efec;--muted:#93a39e;--accent:#2dd4bf;--soft:#1f3330;--border:#2a3835}}
+:root[data-theme="dark"]{--bg:#101716;--card:#18211f;--text:#e6efec;--muted:#93a39e;--accent:#2dd4bf;--soft:#1f3330;--border:#2a3835}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:15px system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+nav{position:sticky;top:env(safe-area-inset-top,0px);z-index:10;background:var(--card);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:6px;padding:10px 12px;overflow-x:auto}
+nav b{color:var(--accent);font-size:18px;margin-right:8px}nav button{border:0;background:transparent;color:var(--muted);padding:8px 12px;border-radius:20px;white-space:nowrap;font:inherit}
+nav button.active{background:var(--soft);color:var(--accent);font-weight:600}
+main{max-width:1100px;margin:auto;padding:14px}.hero{text-align:center;padding:30px 10px}.hero h1{font-size:34px;margin:4px}.hero p{color:var(--muted);max-width:640px;margin:10px auto 20px}
+h2{margin:0 0 10px}.card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:14px;margin-bottom:12px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px}.two{display:grid;grid-template-columns:1.6fr 1fr;gap:12px}@media(max-width:800px){.two{grid-template-columns:1fr}}
+.bar{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:12px}
+.btn{border:0;border-radius:10px;padding:10px 14px;background:var(--accent);color:var(--bg);font:inherit;font-weight:650;cursor:pointer}.btn.secondary{background:var(--soft);color:var(--accent)}.btn.danger{background:#fee2e2;color:#b91c1c}
+input,select{width:100%;padding:9px;border:1px solid var(--border);border-radius:9px;background:var(--bg);color:var(--text);font:inherit}label{display:block;color:var(--muted);font-size:13px;margin:8px 0 4px}
+.room{cursor:pointer}.icon{font-size:28px}.muted{color:var(--muted);font-size:13px}.row{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px;border-radius:9px}
+.badge{display:inline-block;padding:3px 9px;border-radius:20px;font-size:12px;font-weight:650}.good{background:#d1fae5;color:#065f46}.warn{background:#fef3c7;color:#92400e}.bad{background:#fee2e2;color:#991b1b}
+.chips{display:flex;gap:7px;overflow-x:auto;margin-bottom:12px}.chip{border:1px solid var(--border);background:var(--card);color:var(--text);padding:7px 12px;border-radius:20px;white-space:nowrap;font:inherit}.chip.active{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}.stat{font-size:28px;font-weight:750;color:var(--accent)}
+#planWrap{overflow-x:auto;background:var(--soft);border-radius:12px;padding:10px}.plan{position:relative;margin:auto;background:#fff;border:3px solid #37413e;touch-action:none}
+.item{position:absolute;border:2px solid #334155;border-radius:6px;display:flex;align-items:center;justify-content:center;text-align:center;color:#fff;font-size:11px;font-weight:650;cursor:grab;user-select:none;overflow:hidden;touch-action:none}
+.item.good{box-shadow:0 0 0 2px #10b981}.item.warn{box-shadow:0 0 0 2px #f59e0b}.item.bad{box-shadow:0 0 0 2px #ef4444}.item.sel{outline:3px solid var(--accent);z-index:5}
+.mark{position:absolute;font-size:10px;font-weight:700;color:#fff;padding:1px 5px;border-radius:4px}
+.empty{text-align:center;padding:26px;color:var(--muted)}table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:8px;border-bottom:1px solid var(--border)}
+.scroll{overflow-x:auto}.two>*{min-width:0}
+</style></head>
+<body><nav id="nav"></nav><main id="app"></main>
+<script>
+'use strict';
+const ROOMS={living:{name:'Living Room',icon:'🛋️',L:15,W:12},bed:{name:'Bedroom',icon:'🛏️',L:12,W:12},kitchen:{name:'Kitchen',icon:'🍳',L:10,W:9},dining:{name:'Dining Room',icon:'🍽️',L:11,W:10},bath:{name:'Bathroom',icon:'🚿',L:8,W:6},study:{name:'Study Room',icon:'📚',L:10,W:9},utility:{name:'Utility Room',icon:'🧺',L:7,W:6},balcony:{name:'Balcony',icon:'🌿',L:10,W:4},pooja:{name:'Pooja Room',icon:'🪔',L:5,W:5},parking:{name:'Parking Area',icon:'🚗',L:18,W:10}};
+const ITEMS={
+tv:{name:'Smart TV',icon:'📺',rooms:['living','bed'],w:4,h:.5,electric:1,color:'#334155'},
+tvunit:{name:'TV Unit',icon:'🗄️',rooms:['living'],w:5.5,h:1.5,color:'#8b6b4a'},
+sofa:{name:'Sofa',icon:'🛋️',rooms:['living'],w:7,h:3,clear:1.5,color:'#5f8099'},
+table:{name:'Center Table',icon:'☕',rooms:['living'],w:3.5,h:2,color:'#a9825b'},
+speaker:{name:'Speaker',icon:'🔊',rooms:['living'],w:1,h:1,electric:1,color:'#475569'},
+bed:{name:'Bed',icon:'🛏️',rooms:['bed'],w:5,h:6.5,color:'#718f88'},
+wardrobe:{name:'Wardrobe',icon:'🚪',rooms:['bed'],w:6,h:2,clear:2.5,color:'#927052'},
+dressing:{name:'Dressing Table',icon:'🪞',rooms:['bed'],w:3.5,h:1.5,electric:1,color:'#b89475'},
+studytable:{name:'Study Table',icon:'🖥️',rooms:['bed','study'],w:4,h:2,electric:1,color:'#9a7658'},
+fan:{name:'Ceiling Fan',icon:'🌀',rooms:['living','bed','dining','study'],w:2,h:2,ceiling:1,color:'#64748b'},
+ac:{name:'AC',icon:'❄️',rooms:['living','bed','study','dining'],w:3.2,h:.8,electric:1,color:'#38bdf8'},
+fridge:{name:'Refrigerator',icon:'🧊',rooms:['kitchen','dining'],w:2.5,h:2.5,clear:2,electric:1,color:'#94a3b8'},
+stove:{name:'Gas Stove',icon:'🔥',rooms:['kitchen'],w:2.5,h:2,color:'#f97316'},
+chimney:{name:'Chimney',icon:'💨',rooms:['kitchen'],w:3,h:1.5,electric:1,over:'stove',color:'#9ca3af'},
+microwave:{name:'Microwave',icon:'📟',rooms:['kitchen'],w:1.8,h:1.4,electric:1,color:'#6b7280'},
+purifier:{name:'Water Purifier',icon:'🚰',rooms:['kitchen','utility'],w:1.1,h:.8,electric:1,water:1,color:'#22d3ee'},
+rack:{name:'Kitchen Rack',icon:'🍴',rooms:['kitchen'],w:3,h:1.2,color:'#a1887f'},
+washer:{name:'Washing Machine',icon:'🧺',rooms:['kitchen','utility','bath','balcony'],w:2.2,h:2.2,clear:2,electric:1,water:1,color:'#cbd5e1'},
+dining:{name:'Dining Table',icon:'🍽️',rooms:['dining'],w:5.5,h:3.3,clear:2,color:'#b9926a'},
+cabinet:{name:'Storage Cabinet',icon:'🗃️',rooms:['dining','utility','pooja','study','balcony'],w:3,h:1.5,color:'#a98467'}};
+const DEF={living:['tvunit','sofa','tv','table','speaker','ac','fan'],bed:['bed','wardrobe','dressing','tv','ac','fan'],kitchen:['fridge','stove','chimney','microwave','purifier','rack','washer'],dining:['dining','ac','fan'],study:['studytable','cabinet','ac','fan'],utility:['washer','cabinet'],bath:['washer'],balcony:['cabinet'],pooja:['cabinet'],parking:[]};
+
+let state=load(),page=location.hash.replace('#/','')||'home',sel=null;
+function load(){try{const x=JSON.parse(localStorage.getItem('homeease_v3'));if(x&&x.rooms)return x}catch(e){}return{home:'My New Home',rooms:[],current:null}}
+function save(){try{localStorage.setItem('homeease_v3',JSON.stringify(state))}catch(e){}}
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+const room=()=>state.rooms.find(r=>r.id===state.current)||state.rooms[0];
+function go(p){page=p;location.hash='#/'+p;render()}
+window.addEventListener('resize',()=>{if(page==='planner'){window._pw=0;render()}});
+window.addEventListener('hashchange',()=>{page=location.hash.replace('#/','')||'home';render()});
+function pick(id){state.current=id;sel=null;save();render()}
+
+function renderNav(){const L=[['home','Home'],['rooms','Rooms'],['items','Items'],['planner','Planner'],['report','Report']];
+ nav.innerHTML='<b>🏠 HomeEase</b>'+L.map(x=>`<button class="${page===x[0]?'active':''}" onclick="go('${x[0]}')">${x[1]}</button>`).join('')}
+function render(){renderNav();const f={home:homePage,rooms:roomsPage,items:itemsPage,planner:plannerPage,report:reportPage}[page]||homePage;app.innerHTML=f();if(page==='planner')bindPlanner();scrollTo(0,0)}
+
+function homePage(){const t=state.rooms.reduce((n,r)=>n+r.items.length,0);
+ return `<section class="hero"><div style="font-size:52px">🏠</div><h1>HomeEase</h1><p>Plan where furniture and appliances should go in your new home before you move anything.</p><button class="btn" onclick="go('rooms')">Start Planning</button></section>
+ <div class="grid"><div class="card"><div class="stat">${state.rooms.length}</div>Rooms</div><div class="card"><div class="stat">${t}</div>Items</div><div class="card"><div class="stat">${state.rooms.filter(r=>r.done).length}</div>Arranged</div></div>
+ <div class="card"><h2>How it works</h2><div class="grid"><div><b>1. Add rooms</b><p class="muted">Set dimensions.</p></div><div><b>2. Pick items</b><p class="muted">Furniture and appliances.</p></div><div><b>3. Auto arrange</b><p class="muted">Get practical positions.</p></div><div><b>4. Review</b><p class="muted">Scores and tips.</p></div></div></div>`}
+
+function roomsPage(){
+ return `<div class="bar"><div><h2>Room Setup</h2><div class="muted">Add the spaces in your new house.</div></div></div>
+ <div class="card"><label>Home name</label><input value="${esc(state.home)}" onchange="state.home=this.value;save()">
+ <label>Add a room</label><div style="display:flex;gap:8px"><select id="newType">${Object.entries(ROOMS).map(([k,v])=>`<option value="${k}">${v.icon} ${v.name}</option>`).join('')}</select><button class="btn" onclick="addRoom()">+ Add</button></div></div>
+ <div class="grid">${state.rooms.map(r=>`<div class="card room" onclick="pick('${r.id}');go('items')"><div class="icon">${ROOMS[r.type].icon}</div><h3 style="margin:6px 0">${esc(r.name)}</h3><div class="muted">${r.L} × ${r.W} ft · ${r.items.length} items</div><div style="margin-top:8px;display:flex;justify-content:space-between;align-items:center"><span class="badge ${r.done?'good':'warn'}">${r.done?'Arranged':'Not arranged'}</span><button class="btn danger" style="padding:5px 10px" onclick="event.stopPropagation();delRoom('${r.id}')">Delete</button></div></div>`).join('')||'<div class="card empty">No rooms yet. Pick a type above and tap Add.</div>'}</div>`}
+function addRoom(){const t=document.getElementById('newType').value,b=ROOMS[t];
+ const n=state.rooms.filter(r=>r.type===t).length;
+ const r={id:uid(),type:t,name:b.name+(n?' '+(n+1):''),L:b.L,W:b.W,items:[...DEF[t]],layout:{},done:false,door:'S',window:'',electricWall:'',waterWall:''};
+ state.rooms.push(r);state.current=r.id;save();go('items')}
+function delRoom(id){if(!confirm('Delete this room?'))return;state.rooms=state.rooms.filter(r=>r.id!==id);if(state.current===id)state.current=null;save();render()}
+
+function chips(){return `<div class="chips">${state.rooms.map(r=>`<button class="chip ${room()&&room().id===r.id?'active':''}" onclick="pick('${r.id}')">${ROOMS[r.type].icon} ${esc(r.name)}</button>`).join('')}</div>`}
+const sides=(k,v,none)=>`<select onchange="setProp('${k}',this.value)">${none!==undefined?`<option value="">${none}</option>`:''}${['N','E','S','W'].map(x=>`<option ${v===x?'selected':''}>${x}</option>`).join('')}</select>`;
+function itemsPage(){
+ if(!state.rooms.length)return `<div class="card empty"><h2>Add a room first</h2><button class="btn" onclick="go('rooms')">Room Setup</button></div>`;
+ const r=room();
+ return `${chips()}<div class="two"><div>
+ <div class="card"><h2>${ROOMS[r.type].icon} ${esc(r.name)}</h2><div class="grid"><div><label>Length (ft)</label><input type="number" min="2" step=".5" value="${r.L}" onchange="setDim('L',this.value)"></div><div><label>Width (ft)</label><input type="number" min="2" step=".5" value="${r.W}" onchange="setDim('W',this.value)"></div></div></div>
+ <div class="card"><h2>Furniture &amp; Appliances</h2><div class="grid">${Object.entries(ITEMS).filter(([k,v])=>v.rooms.includes(r.type)).map(([k,v])=>{const c=r.items.includes(k);return `<div class="row" style="border:1px solid var(--border)"><span>${v.icon} <b>${v.name}</b><br><small class="muted">${v.w} × ${v.h} ft</small></span><button class="btn ${c?'secondary':''}" onclick="toggleItem('${k}')">${c?'Added':'Add'}</button></div>`}).join('')}</div></div></div>
+ <div><div class="card"><h2>Room Connections</h2><label>Door wall</label>${sides('door',r.door)}<label>Window wall</label>${sides('window',r.window,'None')}<label>Electrical point wall</label>${sides('electricWall',r.electricWall,'Not specified')}<label>Water point wall</label>${sides('waterWall',r.waterWall,'Not specified')}</div>
+ <div class="card"><button class="btn" onclick="go('planner')">Open Planner →</button></div></div></div>`}
+function setDim(k,v){const r=room();r[k]=Math.max(2,Number(v)||2);r.layout={};r.done=false;save();render()}
+function setProp(k,v){const r=room();r[k]=v;r.layout={};r.done=false;save()}
+function toggleItem(k){const r=room(),i=r.items.indexOf(k);if(i>=0){r.items.splice(i,1);delete r.layout[k]}else r.items.push(k);r.done=false;save();render()}
+
+/* ---- placement engine ---- */
+const rect=(k,p)=>{const it=ITEMS[k];return p.rot?{x:p.x,y:p.y,w:it.h,h:it.w}:{x:p.x,y:p.y,w:it.w,h:it.h}};
+const overlap=(a,b)=>a.x<b.x+b.w-.01&&b.x<a.x+a.w-.01&&a.y<b.y+b.h-.01&&b.y<a.y+a.h-.01;
+const inside=(b,r)=>b.x>=-.01&&b.y>=-.01&&b.x+b.w<=r.L+.01&&b.y+b.h<=r.W+.01;
+function gap(a,b){const dx=Math.max(0,Math.max(a.x,b.x)-Math.min(a.x+a.w,b.x+b.w)),dy=Math.max(0,Math.max(a.y,b.y)-Math.min(a.y+a.h,b.y+b.h));return Math.hypot(dx,dy)}
+function wallOf(b,r){const d={N:b.y,S:r.W-b.y-b.h,W:b.x,E:r.L-b.x-b.w};return Object.keys(d).sort((a,c)=>d[a]-d[c]).filter(k=>d[k]<=.6)}
+function score(k,p,r){
+ const it=ITEMS[k],b=rect(k,p),good=[],bad=[];let s=100;
+ if(!inside(b,r))return{score:0,status:'bad',good,bad:['Does not fit inside the room.']};
+ for(const x of r.items){if(x===k||!r.layout[x])continue;const o=rect(x,r.layout[x]);
+  if(ITEMS[x].over===k||it.over===x)continue;
+  if(!it.ceiling&&!ITEMS[x].ceiling&&overlap(b,o))return{score:0,status:'bad',good,bad:['Overlaps '+ITEMS[x].name+'.']};}
+ if(it.clear)for(const x of r.items){if(x===k||!r.layout[x]||ITEMS[x].ceiling)continue;if(gap(b,rect(x,r.layout[x]))<it.clear*.5){s-=12;bad.push('Tight clearance near '+ITEMS[x].name+'.')}}
+ const w=wallOf(b,r);
+ if(it.electric){if(!r.electricWall){s-=6;bad.push('Electrical wall not set.')}else if(w.includes(r.electricWall))good.push('Near the electrical wall.');else{s-=10;bad.push('Far from the electrical wall ('+r.electricWall+').')}}
+ if(it.water){if(!r.waterWall){s-=6;bad.push('Water wall not set.')}else if(w.includes(r.waterWall))good.push('Near the water wall.');else{s-=12;bad.push('Far from the water wall ('+r.waterWall+').')}}
+ if(k==='stove'&&r.window&&w.includes(r.window)){s-=10;bad.push('Stove beside a window gets draughts.')}
+ if(k==='bed'&&!w.length){s-=15;bad.push('Headboard should touch a wall.')}
+ if(k==='ac'&&r.layout.bed&&overlap({x:b.x-1,y:b.y-1,w:b.w+2,h:b.h+2},rect('bed',r.layout.bed))){s-=10;bad.push('AC blows directly over the bed.')}
+ if(k==='tv'&&r.layout.sofa){const so=rect('sofa',r.layout.sofa),d=Math.hypot(b.x+b.w/2-so.x-so.w/2,b.y+b.h/2-so.y-so.h/2);
+  if(d>=5&&d<=14)good.push('Good viewing distance.');else{s-=18;bad.push(d<5?'TV too close to sofa.':'TV too far from sofa.')}}
+ const doorB=doorZone(r);if(!it.ceiling&&!it.over&&overlap(b,doorB)){s-=20;bad.push('Blocks the door.')}
+ if(!bad.length&&!good.length)good.push('Fits with good clearance.');
+ s=Math.max(0,Math.min(100,Math.round(s)));return{score:s,status:s>=80?'good':s>=55?'warn':'bad',good,bad}}
+function doorZone(r){const d=3,w=3,c={N:{x:r.L/2-w/2,y:0,w,h:d},S:{x:r.L/2-w/2,y:r.W-d,w,h:d},W:{x:0,y:r.W/2-w/2,w:d,h:w},E:{x:r.L-d,y:r.W/2-w/2,w:d,h:w}};return c[r.door]||c.S}
+function cands(k,r){const it=ITEMS[k],out=[];
+ if(it.ceiling)return[{x:(r.L-it.w)/2,y:(r.W-it.h)/2}];
+ if(it.over&&r.layout[it.over]){const q=rect(it.over,r.layout[it.over]);return[{x:q.x+(q.w-it.w)/2,y:Math.max(0,q.y-it.h)}]}
+ for(const rot of(it.w===it.h?[0]:[0,1])){const b=rect(k,{x:0,y:0,rot});
+  for(let x=0;x<=r.L-b.w+.01;x+=.5){out.push({x,y:0,rot},{x,y:r.W-b.h,rot})}
+  for(let y=0;y<=r.W-b.h+.01;y+=.5){out.push({x:0,y,rot},{x:r.L-b.w,y,rot})}
+  out.push({x:(r.L-b.w)/2,y:(r.W-b.h)/2,rot})}
+ return out}
+function best(k,r){let b=null;for(const p of cands(k,r)){const e=score(k,p,r);if(e.score>0&&(!b||e.score>b.e.score))b={p,e}}return b}
+function autoArrange(){const r=room();r.layout={};
+ const o=[...r.items].sort((a,c)=>(ITEMS[a].over?1:0)-(ITEMS[c].over?1:0)||ITEMS[c].w*ITEMS[c].h-ITEMS[a].w*ITEMS[a].h);
+ for(const k of o){const b=best(k,r);if(b)r.layout[k]=b.p}
+ r.done=true;save();render()}
+function clearLayout(){const r=room();r.layout={};r.done=false;sel=null;save();render()}
+
+/* ---- planner ---- */
+function scaleOf(r){const avail=window._pw||Math.min(innerWidth-70,760);return Math.max(10,Math.min(55,avail/r.L,520/r.W))}
+function plannerPage(){
+ if(!state.rooms.length)return `<div class="card empty"><h2>Add a room first</h2><button class="btn" onclick="go('rooms')">Room Setup</button></div>`;
+ const r=room();for(const k of r.items)if(!r.layout[k]){const b=best(k,r);if(b)r.layout[k]=b.p}
+ const sc=scaleOf(r);
+ return `${chips()}<div class="toolbar"><button class="btn" onclick="autoArrange()">🤖 Auto Arrange</button><button class="btn secondary" onclick="rotateSel()">⟳ Rotate selected</button><button class="btn secondary" onclick="clearLayout()">Reset</button><button class="btn secondary" onclick="go('report')">Report</button></div>
+ <div class="two"><div class="card"><h2>${esc(r.name)} — ${r.L}×${r.W} ft</h2><div id="planWrap"><div id="plan" class="plan" style="width:${r.L*sc}px;height:${r.W*sc}px">${drawPlan(r,sc)}</div></div>
+ <p class="muted">Drag items to move them (snaps to 0.5 ft). Tap one, then Rotate. Green = good, amber = limited, red = problem.</p></div>
+ <div class="card"><h2>Placement Scores</h2>${scoreList(r)}</div></div>`}
+function scoreList(r){return r.items.map(k=>{const it=ITEMS[k],e=r.layout[k]?score(k,r.layout[k],r):null;
+ return `<div class="row" style="${sel===k?'background:var(--soft)':''}"><span>${it.icon} ${it.name}${e&&(e.bad[0]||e.good[0])?`<br><small class="muted">${esc(e.bad[0]||e.good[0])}</small>`:''}</span>${e?`<span class="badge ${e.status}">${e.score}</span>`:'<span class="badge bad">Unplaced</span>'}</div>`}).join('')}
+function drawPlan(r,sc){
+ let h='';const m=(t,s)=>`<div class="mark" style="${s};background:#0f766e">${t}</div>`;
+ const pos={N:'left:50%;top:0;transform:translateX(-50%)',S:'left:50%;bottom:0;transform:translateX(-50%)',W:'left:0;top:50%',E:'right:0;top:50%'};
+ if(r.door)h+=m('DOOR',pos[r.door]);if(r.window)h+=`<div class="mark" style="${pos[r.window]};background:#0284c7">WINDOW</div>`;
+ for(const k of r.items){const p=r.layout[k];if(!p)continue;const it=ITEMS[k],e=score(k,p,r),b=rect(k,p);
+  h+=`<div class="item ${e.status} ${sel===k?'sel':''}" data-k="${k}" style="left:${b.x*sc}px;top:${b.y*sc}px;width:${b.w*sc}px;height:${b.h*sc}px;background:${it.color};opacity:${it.ceiling?.6:.95}"><span>${b.h*sc>26?it.icon:''}${b.w*sc>50&&b.h*sc>36?'<br>'+it.name:''}</span></div>`}
+ return h}
+function rotateSel(){const r=room();if(!sel||!r.layout[sel])return alert('Tap an item on the plan first.');
+ const p=r.layout[sel],np={...p,rot:p.rot?0:1},b=rect(sel,np);
+ np.x=Math.min(np.x,Math.max(0,r.L-b.w));np.y=Math.min(np.y,Math.max(0,r.W-b.h));
+ if(score(sel,np,r).score>0){r.layout[sel]=np;r.done=false;save();render()}else alert('No room to rotate here.')}
+function bindPlanner(){
+ const plan=document.getElementById('plan');if(!plan)return;let d=null;
+ const pw=document.getElementById('planWrap').clientWidth-26;if(pw>60&&Math.abs(pw-(window._pw||0))>2){window._pw=pw;render();return}
+ plan.querySelectorAll('.item').forEach(el=>el.addEventListener('pointerdown',e=>{
+  e.preventDefault();const r=room(),k=el.dataset.k,sc=scaleOf(r);sel=k;
+  plan.querySelectorAll('.item').forEach(x=>x.classList.toggle('sel',x===el));
+  d={k,sc,sx:e.clientX,sy:e.clientY,p:{...r.layout[k]},el,moved:false};el.setPointerCapture(e.pointerId);el.style.cursor='grabbing'}));
+ plan.addEventListener('pointermove',e=>{if(!d)return;const r=room(),b=rect(d.k,d.p);d.moved=true;
+  let x=Math.round((d.p.x+(e.clientX-d.sx)/d.sc)*2)/2,y=Math.round((d.p.y+(e.clientY-d.sy)/d.sc)*2)/2;
+  x=Math.max(0,Math.min(r.L-b.w,x));y=Math.max(0,Math.min(r.W-b.h,y));d.np={...d.p,x,y};
+  d.el.style.left=x*d.sc+'px';d.el.style.top=y*d.sc+'px'});
+ const end=()=>{if(!d)return;const r=room(),dd=d;d=null;
+  if(dd.moved&&dd.np){if(score(dd.k,dd.np,r).score>0){r.layout[dd.k]=dd.np;r.done=false;save()}}
+  render()};
+ plan.addEventListener('pointerup',end);plan.addEventListener('pointercancel',end)}
+
+/* ---- report ---- */
+function reportPage(){
+ if(!state.rooms.length)return `<div class="card empty"><h2>No rooms yet</h2><button class="btn" onclick="go('rooms')">Room Setup</button></div>`;
+ let all=[];
+ const rows=state.rooms.map(r=>{const res=r.items.map(k=>({k,e:r.layout[k]?score(k,r.layout[k],r):null}));
+  const placed=res.filter(x=>x.e),avg=placed.length?Math.round(placed.reduce((n,x)=>n+x.e.score,0)/placed.length):0;
+  const area=r.L*r.W,used=r.items.filter(k=>!ITEMS[k].ceiling&&!ITEMS[k].over).reduce((n,k)=>n+ITEMS[k].w*ITEMS[k].h,0),pct=Math.round(used/area*100);
+  res.forEach(x=>{if(!x.e)all.push([r.name,ITEMS[x.k].name,'Could not be placed — room too small.']);else x.e.bad.forEach(b=>all.push([r.name,ITEMS[x.k].name,b]))});
+  return {r,avg,pct,n:r.items.length,un:res.length-placed.length}});
+ return `<div class="bar"><div><h2>Layout Report — ${esc(state.home)}</h2><div class="muted">Scores for every room.</div></div></div>
+ <div class="card scroll"><table><tr><th>Room</th><th>Size</th><th>Items</th><th>Floor used</th><th>Score</th></tr>${rows.map(x=>`<tr><td>${ROOMS[x.r.type].icon} ${esc(x.r.name)}</td><td>${x.r.L}×${x.r.W}</td><td>${x.n}${x.un?` <span class="badge bad">${x.un} unplaced</span>`:''}</td><td>${x.pct}%${x.pct>45?' ⚠️':''}</td><td><span class="badge ${x.avg>=80?'good':x.avg>=55?'warn':'bad'}">${x.avg}</span></td></tr>`).join('')}</table></div>
+ <div class="card"><h2>Things to fix (${all.length})</h2>${all.length?all.map(a=>`<div class="row"><span><b>${esc(a[0])} · ${esc(a[1])}</b><br><small class="muted">${esc(a[2])}</small></span></div>`).join(''):'<div class="empty">No issues found. Nice layout! ✅</div>'}</div>
+ <div class="toolbar"><button class="btn secondary" onclick="window.print()">Print</button><button class="btn danger" onclick="if(confirm('Erase all data?')){state={home:'My New Home',rooms:[],current:null};save();go('home')}">Reset all</button></div>`}
+
+render();
+</script></body></html>
